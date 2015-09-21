@@ -19,16 +19,28 @@ function Tunnel(config) {
 Tunnel.prototype.connect = function(port, cb) {
   var self = this;
 
-  ngrok.connect(extend({ port: port }, self.tunnel_settings), function(err, url) {
-    if (err) {
-      err.stack = '';
-      cb(err);
-      return;
-    }
+  function connect() {
+    ngrok.connect(extend({ port: port }, self.tunnel_settings), function(err, url) {
+      if (err) {
+        err.stack = '';
+        cb(err);
+        return;
+      }
 
-    self.ngrok_url = url;
-    cb(null, url.replace('tcp://', 'http://') + '/__zuul');
-  });
+      self.ngrok_url = url;
+      cb(null, url.replace('tcp://', 'http://') + '/__zuul');
+    });
+  }
+
+  if (this.tunnel_settings.authtoken) {
+    var authtoken = this.tunnel_settings.authtoken;
+    delete this.tunnel_settings.authtoken;
+    ngrok.authtoken(authtoken, function() {
+      setTimeout(connect, 3000);
+    });
+  } else {
+    connect();
+  }
 };
 
 Tunnel.prototype.close = function() {
